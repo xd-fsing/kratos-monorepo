@@ -1,0 +1,221 @@
+syntax = "proto3";
+
+package todo.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "kratos-monorepo/api/todo/v1;v1";
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.todo.v1";
+option java_outer_classname = "TodoProto";
+
+// TodoService 提供管理 todo 事项的简单 CRUD 示例。
+// 它演示一元、服务端流式与双向流式 RPC，以及 AIP 风格的列表过滤、
+// 排序与分页。
+service TodoService {
+  // CreateTodo 创建一条新的 todo，并返回已持久化的记录，其中服务端分配的
+  // id、created_at、updated_at 已填充。
+  // 若请求载荷校验失败，返回 INVALID_ARGUMENT。
+  rpc CreateTodo (CreateTodoRequest) returns (Todo) {
+    option (google.api.http) = {
+      post: "/v1/todos/create"
+      body: "todo"
+    };
+  }
+
+  // ListTodos 返回一页 todo，可附带过滤与排序。
+  // 使用 TodoSet 中的 next_page_token 获取后续页。
+  // 若 filter、order_by 或 page_token 格式非法，返回 INVALID_ARGUMENT。
+  rpc ListTodos (ListTodosRequest) returns (TodoSet) {
+    option (google.api.http) = {
+      get: "/v1/todos/list"
+    };
+  }
+
+  // GetTodo 按 id 返回单条 todo。
+  // 若该 id 不存在，返回 NOT_FOUND。
+  rpc GetTodo (GetTodoRequest) returns (Todo) {
+    option (google.api.http) = {
+      get: "/v1/todos/{id}"
+    };
+  }
+
+  // WatchTodos 打开一条服务端流，持续推送所有匹配给定过滤与排序的 todo 的
+  // 创建、更新、删除事件。
+  // 流保持打开，直到客户端取消或服务端终止它。
+  rpc WatchTodos (WatchTodosRequest) returns (stream TodoEvent) {
+    option (google.api.http) = {
+      get: "/v1/todos/watch"
+    };
+  }
+
+  // UpdateTodo 使用 FieldMask 对既有 todo 做部分更新。只有 update_mask 中
+  // 列出的字段会被覆盖，其余字段保持不变。
+  // 若目标 todo 不存在，返回 NOT_FOUND；若 update_mask 引用未知字段，
+  // 返回 INVALID_ARGUMENT。
+  rpc UpdateTodo (UpdateTodoRequest) returns (Todo) {
+    option (google.api.http) = {
+      put: "/v1/todos/update"
+      body: "todo"
+    };
+  }
+
+  // DeleteTodo 按 id 软删除一条 todo。记录保留在服务端，但不再出现在
+  // GetTodo 或 ListTodos 的结果中。
+  // 若该 id 不存在，返回 NOT_FOUND。
+  rpc DeleteTodo (DeleteTodoRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/todos/{id}"
+    };
+  }
+
+  // SyncTodos 打开一条双向流做双向同步。
+  // 客户端发送描述本地变更的 SyncTodoRequest 消息，服务端推送反映结果
+  // 状态的 TodoEvent 消息作为回应。
+  // 流保持打开，直到任意一方关闭它。
+  rpc SyncTodos (stream SyncTodoRequest) returns (stream TodoEvent) {
+    option (google.api.http) = {
+      post: "/v1/todos/sync"
+      body: "*"
+    };
+  }
+}
+
+// TodoStatus 是 todo 事项的生命周期状态。
+enum TodoStatus {
+  // 默认值，服务端不会返回。
+  TODO_STATUS_UNSPECIFIED = 0;
+  // 事项处于生效状态，会出现在读取结果中。
+  TODO_STATUS_ACTIVE = 1;
+  // 事项已被软删除：记录保留在服务端，但不再出现在 GetTodo 或 ListTodos
+  // 的结果中。
+  TODO_STATUS_DELETED = 2;
+}
+
+// Todo 是 todo 事项的规范表示。
+message Todo {
+  // 应用侧生成的 UUIDv7 标识。创建时只读。
+  string id = 1;
+  // 简短的人类可读标题。
+  string title = 2;
+  // 事项的详细描述或备注。
+  string content = 3;
+  // 事项是否已完成。
+  bool completed = 4;
+  // 事项的创建时间。服务端分配，只读。
+  google.protobuf.Timestamp created_at = 5;
+  // 事项的最后修改时间。服务端分配，只读。
+  google.protobuf.Timestamp updated_at = 6;
+  // 生命周期状态。服务端分配，只读：调用 DeleteTodo 把事项移到
+  // TODO_STATUS_DELETED。
+  TodoStatus status = 7;
+  // 归属用户的 id，由 user 服务持有。可选。CreateTodo 时服务端会通过
+  // user 服务的 API 校验用户存在（不存在则 NOT_FOUND）。创建后只读：
+  // UpdateTodo 会忽略它。空字符串表示无归属。
+  string user_id = 8;
+}
+
+// TodoSet 是 ListTodos 返回的分页集合。
+message TodoSet {
+  // 按 ListTodosRequest.order_by 指定顺序排列的一页 todo。
+  repeated Todo todos = 1;
+  // 用于通过 ListTodosRequest.page_token 获取下一页的令牌。
+  // 没有更多结果时为空。
+  string next_page_token = 2;
+}
+
+// CreateTodoRequest 是 TodoService.CreateTodo 的输入。
+message CreateTodoRequest {
+  // 要创建的 todo。id、created_at、updated_at 字段在输入时被忽略，由服务端
+  // 在响应中填充。
+  Todo todo = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// GetTodoRequest 是 TodoService.GetTodo 的输入。
+message GetTodoRequest {
+  // 要获取的 todo 的唯一标识。
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// ListTodosRequest 是 TodoService.ListTodos 的输入。
+message ListTodosRequest {
+  // 可选。单页最多返回的 todo 数。
+  // 未设置或超范围时，服务端可能应用默认值与最大值。
+  int32 page_size = 1;
+  // 可选。来自上一次响应 next_page_token 的令牌，用于获取下一页。
+  // 留空表示请求第一页。
+  string page_token = 2;
+  // 可选。标准列表过滤表达式。
+  // 支持的字段：
+  //    * `title`（例如 `title:"bug"`）
+  //    * `content`（例如 `content:"docs"`）
+  //    * `completed`（例如 `completed` 或 `NOT completed`）
+  //    * `created_at` 范围（例如 `created_at>="2026-01-01T00:00:00Z"`）
+  string filter = 3;
+  // 可选。逗号分隔的排序字段列表。
+  // 支持的字段：
+  //    * `id`
+  //    * `title`
+  //    * `created_at`
+  //    * `updated_at`
+  // 在字段后追加 ` desc` 表示降序，例如 `created_at desc`。
+  // 未指定方向时默认为升序。
+  string order_by = 4;
+}
+
+// UpdateTodoRequest 是 TodoService.UpdateTodo 的输入。
+message UpdateTodoRequest {
+  // 携带新字段值的 todo。todo.id 标识目标记录，必须设置。
+  Todo todo = 1 [(google.api.field_behavior) = REQUIRED];
+  // todo 中需要覆盖的字段路径集合。未列出的字段保持不变。
+  // 使用单一路径 `*` 可替换全部可变字段。
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// DeleteTodoRequest 是 TodoService.DeleteTodo 的输入。
+message DeleteTodoRequest {
+  // 要删除的 todo 的唯一标识。
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// WatchTodosRequest 是 TodoService.WatchTodos 的输入。
+// 它选择事件流要观察的 todo 范围。
+message WatchTodosRequest {
+  // 可选。开始推送实时事件之前，初始快照最多返回的 todo 数。
+  int32 page_size = 1;
+  // 可选。用于从上一个快照继续的页令牌。
+  string page_token = 2;
+  // 可选。列表过滤表达式，语法与 ListTodosRequest.filter 相同。
+  string filter = 3;
+  // 可选。排序规格，语法与 ListTodosRequest.order_by 相同。
+  string order_by = 4;
+}
+
+// SyncTodoRequest 是 SyncTodos 双向流中的单条客户端消息。
+// action 字段决定在服务端执行哪个操作。
+message SyncTodoRequest {
+  // 要执行的操作，取值 `create`、`update` 或 `delete`。
+  string action = 1;
+  // `create` 与 `update` 操作的载荷；`delete` 时被忽略。
+  Todo todo = 2;
+  // 目标 todo 的标识。`delete` 与 `update` 必填。
+  string id = 3;
+  // `update` 操作用于限定覆盖范围的字段掩码。
+  // `create` 与 `delete` 时被忽略。
+  google.protobuf.FieldMask update_mask = 4;
+}
+
+// TodoEvent 是服务端推送的描述 todo 变更的消息。
+// 由 WatchTodos 与 SyncTodos 两条流共同使用。
+message TodoEvent {
+  // 发生的变更，取值 `created`、`updated` 或 `deleted`。
+  string action = 1;
+  // 变更后的 todo。对 `deleted` 事件，只保证 id 字段有值。
+  Todo todo = 2;
+  // 服务端观察到变更的时间。
+  google.protobuf.Timestamp event_time = 3;
+}

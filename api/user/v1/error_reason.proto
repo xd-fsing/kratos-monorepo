@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "kratos-monorepo/api/user/v1;v1";
+option java_multiple_files = true;
+option java_package = "user.v1";
+option objc_class_prefix = "APIUserV1";
+
+enum ErrorReason {
+  USER_UNSPECIFIED = 0;
+  USER_NOT_FOUND = 1;
+  USER_INVALID_ARGUMENT = 2;
+  // USER_UNAVAILABLE 由依赖 user 服务的服务在无法连通 user 服务时返回。
+  USER_UNAVAILABLE = 3;
+}

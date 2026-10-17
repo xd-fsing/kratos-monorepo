@@ -1,0 +1,48 @@
+syntax = "proto3";
+package user.conf;
+
+option go_package = "kratos-monorepo/apps/user/internal/conf;conf";
+
+import "google/protobuf/duration.proto";
+
+message Bootstrap {
+  Server server = 1;
+  Data data = 2;
+}
+
+message Server {
+  message HTTP {
+    string network = 1;
+    string addr = 2;
+    google.protobuf.Duration timeout = 3;
+  }
+  message GRPC {
+    string network = 1;
+    string addr = 2;
+    google.protobuf.Duration timeout = 3;
+  }
+  HTTP http = 1;
+  GRPC grpc = 2;
+}
+
+message Data {
+  message Database {
+    // 注册到 database/sql 的驱动名，例如 "mysql"。
+    string driver = 1;
+    // 驱动专用的 DSN。凭据不要进入版本控制。
+    string source = 2;
+    // 打印每条生成的 SQL。仅限开发环境。
+    bool debug = 3;
+    // 启动时按 ent schema 建表或更新表。生产环境保持 false，并把迁移
+    // 作为单独评审的步骤执行。
+    bool auto_migrate = 4;
+  }
+  message Redis {
+    string network = 1;
+    string addr = 2;
+    google.protobuf.Duration read_timeout = 3;
+    google.protobuf.Duration write_timeout = 4;
+  }
+  Database database = 1;
+  Redis redis = 2;
+}

@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package user.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "kratos-monorepo/api/user/v1;v1";
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.user.v1";
+option java_outer_classname = "UserProto";
+
+// UserService 管理用户账号。它是本仓中用户的归属服务；其他服务通过它的
+// gRPC API 按 id 引用用户，而不是直接访问它的数据库。
+service UserService {
+  // CreateUser 创建一个新用户，并返回已持久化的记录，其中服务端分配的
+  // id、created_at、updated_at 已填充。
+  // 若请求载荷校验失败，返回 INVALID_ARGUMENT。
+  rpc CreateUser (CreateUserRequest) returns (User) {
+    option (google.api.http) = {
+      post: "/v1/users/create"
+      body: "user"
+    };
+  }
+
+  // ListUsers 返回一页用户，可附带过滤与排序。
+  // 使用 UserSet 中的 next_page_token 获取后续页。
+  // 若 filter、order_by 或 page_token 格式非法，返回 INVALID_ARGUMENT。
+  rpc ListUsers (ListUsersRequest) returns (UserSet) {
+    option (google.api.http) = {
+      get: "/v1/users/list"
+    };
+  }
+
+  // GetUser 按 id 返回单个用户。
+  // 若该 id 不存在，返回 NOT_FOUND。
+  rpc GetUser (GetUserRequest) returns (User) {
+    option (google.api.http) = {
+      get: "/v1/users/{id}"
+    };
+  }
+}
+
+// User 是用户账号的规范表示。
+message User {
+  // 应用侧生成的 UUIDv7 标识。创建时只读。
+  string id = 1;
+  // 用户的显示名称。
+  string name = 2;
+  // 用户的邮箱地址。
+  string email = 3;
+  // 用户的创建时间。服务端分配，只读。
+  google.protobuf.Timestamp created_at = 4;
+  // 用户的最后修改时间。服务端分配，只读。
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// UserSet 是 ListUsers 返回的分页集合。
+message UserSet {
+  // 按 ListUsersRequest.order_by 指定顺序排列的一页用户。
+  repeated User users = 1;
+  // 用于通过 ListUsersRequest.page_token 获取下一页的令牌。
+  // 没有更多结果时为空。
+  string next_page_token = 2;
+}
+
+// CreateUserRequest 是 UserService.CreateUser 的输入。
+message CreateUserRequest {
+  // 要创建的用户。id、created_at、updated_at 字段在输入时被忽略，由服务端
+  // 在响应中填充。
+  User user = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// GetUserRequest 是 UserService.GetUser 的输入。
+message GetUserRequest {
+  // 要获取的用户的唯一标识。
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// ListUsersRequest 是 UserService.ListUsers 的输入。
+message ListUsersRequest {
+  // 可选。单页最多返回的用户数。
+  // 未设置或超范围时，服务端可能应用默认值与最大值。
+  int32 page_size = 1;
+  // 可选。来自上一次响应 next_page_token 的令牌，用于获取下一页。
+  // 留空表示请求第一页。
+  string page_token = 2;
+  // 可选。标准列表过滤表达式。
+  // 支持的字段：
+  //    * `name`（例如 `name:"alice"`）
+  //    * `email`（例如 `email:"alice@example.com"`）
+  //    * `created_at` 范围（例如 `created_at>="2026-01-01T00:00:00Z"`）
+  string filter = 3;
+  // 可选。逗号分隔的排序字段列表。
+  // 支持的字段：
+  //    * `id`
+  //    * `name`
+  //    * `email`
+  //    * `created_at`
+  //    * `updated_at`
+  // 在字段后追加 ` desc` 表示降序，例如 `created_at desc`。
+  // 未指定方向时默认为升序。
+  string order_by = 4;
+}

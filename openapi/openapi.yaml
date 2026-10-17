@@ -1,0 +1,456 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: ""
+    version: 0.0.1
+paths:
+    /v1/todos/create:
+        post:
+            tags:
+                - TodoService
+            description: |-
+                CreateTodo 创建一条新的 todo，并返回已持久化的记录，其中服务端分配的
+                 id、created_at、updated_at 已填充。
+                 若请求载荷校验失败，返回 INVALID_ARGUMENT。
+            operationId: TodoService_CreateTodo
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/todo.v1.Todo'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/todo.v1.Todo'
+    /v1/todos/list:
+        get:
+            tags:
+                - TodoService
+            description: |-
+                ListTodos 返回一页 todo，可附带过滤与排序。
+                 使用 TodoSet 中的 next_page_token 获取后续页。
+                 若 filter、order_by 或 page_token 格式非法，返回 INVALID_ARGUMENT。
+            operationId: TodoService_ListTodos
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: |-
+                    可选。单页最多返回的 todo 数。
+                     未设置或超范围时，服务端可能应用默认值与最大值。
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: |-
+                    可选。来自上一次响应 next_page_token 的令牌，用于获取下一页。
+                     留空表示请求第一页。
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    可选。标准列表过滤表达式。
+                     支持的字段：
+                        * `title`（例如 `title:"bug"`）
+                        * `content`（例如 `content:"docs"`）
+                        * `completed`（例如 `completed` 或 `NOT completed`）
+                        * `created_at` 范围（例如 `created_at>="2026-01-01T00:00:00Z"`）
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: |-
+                    可选。逗号分隔的排序字段列表。
+                     支持的字段：
+                        * `id`
+                        * `title`
+                        * `created_at`
+                        * `updated_at`
+                     在字段后追加 ` desc` 表示降序，例如 `created_at desc`。
+                     未指定方向时默认为升序。
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/todo.v1.TodoSet'
+    /v1/todos/sync:
+        post:
+            tags:
+                - TodoService
+            description: |-
+                SyncTodos 打开一条双向流做双向同步。
+                 客户端发送描述本地变更的 SyncTodoRequest 消息，服务端推送反映结果
+                 状态的 TodoEvent 消息作为回应。
+                 流保持打开，直到任意一方关闭它。
+            operationId: TodoService_SyncTodos
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/todo.v1.SyncTodoRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/todo.v1.TodoEvent'
+    /v1/todos/update:
+        put:
+            tags:
+                - TodoService
+            description: |-
+                UpdateTodo 使用 FieldMask 对既有 todo 做部分更新。只有 update_mask 中
+                 列出的字段会被覆盖，其余字段保持不变。
+                 若目标 todo 不存在，返回 NOT_FOUND；若 update_mask 引用未知字段，
+                 返回 INVALID_ARGUMENT。
+            operationId: TodoService_UpdateTodo
+            parameters:
+                - name: updateMask
+                  in: query
+                  description: |-
+                    todo 中需要覆盖的字段路径集合。未列出的字段保持不变。
+                     使用单一路径 `*` 可替换全部可变字段。
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/todo.v1.Todo'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/todo.v1.Todo'
+    /v1/todos/watch:
+        get:
+            tags:
+                - TodoService
+            description: |-
+                WatchTodos 打开一条服务端流，持续推送所有匹配给定过滤与排序的 todo 的
+                 创建、更新、删除事件。
+                 流保持打开，直到客户端取消或服务端终止它。
+            operationId: TodoService_WatchTodos
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: 可选。开始推送实时事件之前，初始快照最多返回的 todo 数。
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: 可选。用于从上一个快照继续的页令牌。
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: 可选。列表过滤表达式，语法与 ListTodosRequest.filter 相同。
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: 可选。排序规格，语法与 ListTodosRequest.order_by 相同。
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/todo.v1.TodoEvent'
+    /v1/todos/{id}:
+        get:
+            tags:
+                - TodoService
+            description: |-
+                GetTodo 按 id 返回单条 todo。
+                 若该 id 不存在，返回 NOT_FOUND。
+            operationId: TodoService_GetTodo
+            parameters:
+                - name: id
+                  in: path
+                  description: 要获取的 todo 的唯一标识。
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/todo.v1.Todo'
+        delete:
+            tags:
+                - TodoService
+            description: |-
+                DeleteTodo 按 id 软删除一条 todo。记录保留在服务端，但不再出现在
+                 GetTodo 或 ListTodos 的结果中。
+                 若该 id 不存在，返回 NOT_FOUND。
+            operationId: TodoService_DeleteTodo
+            parameters:
+                - name: id
+                  in: path
+                  description: 要删除的 todo 的唯一标识。
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/users/create:
+        post:
+            tags:
+                - UserService
+            description: |-
+                CreateUser 创建一个新用户，并返回已持久化的记录，其中服务端分配的
+                 id、created_at、updated_at 已填充。
+                 若请求载荷校验失败，返回 INVALID_ARGUMENT。
+            operationId: UserService_CreateUser
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/user.v1.User'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/user.v1.User'
+    /v1/users/list:
+        get:
+            tags:
+                - UserService
+            description: |-
+                ListUsers 返回一页用户，可附带过滤与排序。
+                 使用 UserSet 中的 next_page_token 获取后续页。
+                 若 filter、order_by 或 page_token 格式非法，返回 INVALID_ARGUMENT。
+            operationId: UserService_ListUsers
+            parameters:
+                - name: pageSize
+                  in: query
+                  description: |-
+                    可选。单页最多返回的用户数。
+                     未设置或超范围时，服务端可能应用默认值与最大值。
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: |-
+                    可选。来自上一次响应 next_page_token 的令牌，用于获取下一页。
+                     留空表示请求第一页。
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: |-
+                    可选。标准列表过滤表达式。
+                     支持的字段：
+                        * `name`（例如 `name:"alice"`）
+                        * `email`（例如 `email:"alice@example.com"`）
+                        * `created_at` 范围（例如 `created_at>="2026-01-01T00:00:00Z"`）
+                  schema:
+                    type: string
+                - name: orderBy
+                  in: query
+                  description: |-
+                    可选。逗号分隔的排序字段列表。
+                     支持的字段：
+                        * `id`
+                        * `name`
+                        * `email`
+                        * `created_at`
+                        * `updated_at`
+                     在字段后追加 ` desc` 表示降序，例如 `created_at desc`。
+                     未指定方向时默认为升序。
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/user.v1.UserSet'
+    /v1/users/{id}:
+        get:
+            tags:
+                - UserService
+            description: |-
+                GetUser 按 id 返回单个用户。
+                 若该 id 不存在，返回 NOT_FOUND。
+            operationId: UserService_GetUser
+            parameters:
+                - name: id
+                  in: path
+                  description: 要获取的用户的唯一标识。
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/user.v1.User'
+components:
+    schemas:
+        todo.v1.SyncTodoRequest:
+            type: object
+            properties:
+                action:
+                    type: string
+                    description: 要执行的操作，取值 `create`、`update` 或 `delete`。
+                todo:
+                    allOf:
+                        - $ref: '#/components/schemas/todo.v1.Todo'
+                    description: '`create` 与 `update` 操作的载荷；`delete` 时被忽略。'
+                id:
+                    type: string
+                    description: 目标 todo 的标识。`delete` 与 `update` 必填。
+                updateMask:
+                    type: string
+                    description: |-
+                        `update` 操作用于限定覆盖范围的字段掩码。
+                         `create` 与 `delete` 时被忽略。
+                    format: field-mask
+            description: |-
+                SyncTodoRequest 是 SyncTodos 双向流中的单条客户端消息。
+                 action 字段决定在服务端执行哪个操作。
+        todo.v1.Todo:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 应用侧生成的 UUIDv7 标识。创建时只读。
+                title:
+                    type: string
+                    description: 简短的人类可读标题。
+                content:
+                    type: string
+                    description: 事项的详细描述或备注。
+                completed:
+                    type: boolean
+                    description: 事项是否已完成。
+                createdAt:
+                    type: string
+                    description: 事项的创建时间。服务端分配，只读。
+                    format: date-time
+                updatedAt:
+                    type: string
+                    description: 事项的最后修改时间。服务端分配，只读。
+                    format: date-time
+                status:
+                    type: integer
+                    description: |-
+                        生命周期状态。服务端分配，只读：调用 DeleteTodo 把事项移到
+                         TODO_STATUS_DELETED。
+                    format: enum
+                userId:
+                    type: string
+                    description: |-
+                        归属用户的 id，由 user 服务持有。可选。CreateTodo 时服务端会通过
+                         user 服务的 API 校验用户存在（不存在则 NOT_FOUND）。创建后只读：
+                         UpdateTodo 会忽略它。空字符串表示无归属。
+            description: Todo 是 todo 事项的规范表示。
+        todo.v1.TodoEvent:
+            type: object
+            properties:
+                action:
+                    type: string
+                    description: 发生的变更，取值 `created`、`updated` 或 `deleted`。
+                todo:
+                    allOf:
+                        - $ref: '#/components/schemas/todo.v1.Todo'
+                    description: 变更后的 todo。对 `deleted` 事件，只保证 id 字段有值。
+                eventTime:
+                    type: string
+                    description: 服务端观察到变更的时间。
+                    format: date-time
+            description: |-
+                TodoEvent 是服务端推送的描述 todo 变更的消息。
+                 由 WatchTodos 与 SyncTodos 两条流共同使用。
+        todo.v1.TodoSet:
+            type: object
+            properties:
+                todos:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/todo.v1.Todo'
+                    description: 按 ListTodosRequest.order_by 指定顺序排列的一页 todo。
+                nextPageToken:
+                    type: string
+                    description: |-
+                        用于通过 ListTodosRequest.page_token 获取下一页的令牌。
+                         没有更多结果时为空。
+            description: TodoSet 是 ListTodos 返回的分页集合。
+        user.v1.User:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 应用侧生成的 UUIDv7 标识。创建时只读。
+                name:
+                    type: string
+                    description: 用户的显示名称。
+                email:
+                    type: string
+                    description: 用户的邮箱地址。
+                createdAt:
+                    type: string
+                    description: 用户的创建时间。服务端分配，只读。
+                    format: date-time
+                updatedAt:
+                    type: string
+                    description: 用户的最后修改时间。服务端分配，只读。
+                    format: date-time
+            description: User 是用户账号的规范表示。
+        user.v1.UserSet:
+            type: object
+            properties:
+                users:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/user.v1.User'
+                    description: 按 ListUsersRequest.order_by 指定顺序排列的一页用户。
+                nextPageToken:
+                    type: string
+                    description: |-
+                        用于通过 ListUsersRequest.page_token 获取下一页的令牌。
+                         没有更多结果时为空。
+            description: UserSet 是 ListUsers 返回的分页集合。
+tags:
+    - name: TodoService
+      description: |-
+        TodoService 提供管理 todo 事项的简单 CRUD 示例。
+         它演示一元、服务端流式与双向流式 RPC，以及 AIP 风格的列表过滤、
+         排序与分页。
+    - name: UserService
+      description: |-
+        UserService 管理用户账号。它是本仓中用户的归属服务；其他服务通过它的
+         gRPC API 按 id 引用用户，而不是直接访问它的数据库。
